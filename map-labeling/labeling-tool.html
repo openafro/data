@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+  <head>
+    <title>OpenAFRO map labeling tool</title>
+
+    <style type="text/css">
+      #content {
+          height: 95vh;
+          display: flex;
+          flex-direction: column;
+      }
+
+      #canvas-container {
+          border: 1px solid black;
+          overflow: scroll;
+          width: 100%;
+          position: relative;
+          flex: 1;
+      }
+
+      #tools {
+          padding: 2em;
+          position: sticky;
+          top: 0;
+          left: 0;
+          background-color: rgb(255, 255, 255, 0.5);
+      }
+
+      #tools div {
+          display: inline-block;
+          margin-right: 2em;
+      }
+
+      #canvas {
+          background-size: contain;
+          background-repeat: no-repeat;
+          width: 4096;
+          height: 4096;
+      }
+    </style>
+
+    <script type="text/javascript">
+      const ERASER_COLOR = "rgba(0, 0, 0, 1)", ROAD_COLOR = "#ff0000ff", CONSTRUCTION_COLOR = "#ffff00ff";
+
+      let canvas;
+      let context;
+      let drawing = false;
+      let radius = 10;
+      const tileId = "{{ tile }}";
+
+      window.addEventListener("load", () => {
+        canvas = document.getElementById("canvas");
+        canvas.width = 4096;
+        canvas.height = 4096;
+        canvas.style.backgroundImage = `url(/tiles/${tileId}.jpg)`;
+
+        canvas.addEventListener("mouseup", stopDrawing);
+        canvas.addEventListener("mouseout", stopDrawing);
+        canvas.addEventListener("mousedown", startDrawing);
+        canvas.addEventListener("mousemove", draw);
+
+        context = canvas.getContext('2d');
+        context.globalCompositeOperation = "source-over";
+        context.fillStyle = ROAD_COLOR;
+        {{#data}}
+          const initialImage = new Image();
+          initialImage.onload = () => context.drawImage(initialImage, 0, 0);
+          initialImage.src = "{{{data}}}";
+        {{/data}}
+
+        const labelType = document.getElementById("label-type");
+        const labelDiameter = document.getElementById("diameter");
+
+        labelType.addEventListener("change", changeLabel);
+        labelDiameter.addEventListener("change", changeDiameter);
+
+        labelType.value = "road";
+        labelDiameter.value = "2";
+      });
+
+      function startDrawing(event) {
+        console.log('startDrawing()');
+        drawing = true;
+        draw(event);
+      }
+
+      function stopDrawing() {
+        console.log('stopDrawing()');
+        drawing = false;
+      }
+
+      function draw(event) {
+        if (drawing) {
+          let x = event.offsetX;
+          let y = event.offsetY;
+
+          context.beginPath();
+          context.arc(x, y, radius, 0, 2*Math.PI);
+          context.fill();
+        }
+      }
+
+      function changeDiameter(event) {
+        radius = parseFloat(event.target.value) / 2 * 10;
+      }
+
+      function changeLabel(event) {
+        switch (event.target.value) {
+        case "road":
+          context.globalCompositeOperation = "source-over";
+          context.fillStyle = ROAD_COLOR;
+          break;
+        case "building":
+          context.globalCompositeOperation = "source-over";
+          context.fillStyle = CONSTRUCTION_COLOR; break;
+        case "eraser":
+          context.globalCompositeOperation = "destination-out";
+          context.fillStyle = ERASER_COLOR; break;
+        }
+      }
+
+      function save() {
+        const dataUrl = canvas.toDataURL('image/png');
+        console.log('Saving tile =', tileId, ',', dataUrl.length, 'bytes.');
+
+        const name = prompt('Obrigado pela contribuição! Para fins de registro, digite seu nome:',
+                           localStorage.name);
+        const email = prompt('Seu email:', localStorage.email);
+
+        localStorage.name = name;
+        localStorage.email = email;
+
+        fetch(
+          '/save',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tile: tileId, authorName: name, authorEmail: email, image: dataUrl }),
+          })
+          .then(ok => alert('Marcação salva. Obrigado! Para fazer outra, recarregue a página.'))
+          .catch(error => alert(error));
+      }
+    </script>
+
+  </head>
+  <body>
+
+    <div id="content">
+      <h1>Marcação de estradas e casas</h1>
+
+      <div id="canvas-container">
+        <div id="tools">
+          <div>
+            <h5>Tipo de marcação</h5>
+            <select id="label-type">
+              <option value="road">Estrada</option>
+              <option value="building">Casas e construções</option>
+              <option value="eraser">Apagar</option>
+            </select>
+          </div>
+          <div>
+            <h5>Tamanho (diâmetro)</h5>
+            <select id="diameter">
+              <option value="1">1m</option>
+              <option value="2">2m</option>
+              <option value="3">3m</option>
+              <option value="4">4m</option>
+              <option value="5">5m</option>
+            </select>
+          </div>
+          <div>
+            <button onclick="save()">Salvar</button>
+          </div>
+        </div>
+
+        <canvas id="canvas"></canvas>
+      </div>
+    </div>
+
+  </body>
+</html>

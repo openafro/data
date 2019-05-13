@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Lista de tiles rotulados</title>
+    <style type="text/css">
+      table {
+          border-collapse: collapse;
+          border: 1px solid black;
+      }
+      td, th {
+          border: 1px solid black;
+          padding: 1em;
+          text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Tiles rotulados ({{count}})</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Tile</th>
+          <th>Data</th>
+          <th>Autor</th>
+          <th>Link</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#overlays}}
+        <tr>
+          <td>{{ tile }}</td>
+          <td>{{ timestamp }}</td>
+          <td>{{ authorName }} &lt;{{authorEmail}}&gt;</td>
+          <td><a href="/view/{{_id}}">Ver</a></td>
+        </tr>
+        {{/overlays}}
+      </tbody>
+    </table>
+  </body>
+</html>
