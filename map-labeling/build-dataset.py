@@ -147,6 +147,12 @@ with h5py.File(opts.output, "w") as output:
     output.create_dataset("y_val", data=val[1])
     output.create_dataset("X_test", data=test[0])
     output.create_dataset("y_test", data=test[1])
+
+    output.attrs.create("input_bands", X.shape[1])
+    output.attrs.create("output_bands", y.shape[1])
+    output.attrs.create("input_size", X.shape[2])
+    output.attrs.create("output_size", y.shape[2])
+
     output.close()
 
 print('Wrote', opts.output, 'with', len(train[0]), 'training examples,',
