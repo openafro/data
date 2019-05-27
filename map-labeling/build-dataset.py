@@ -123,7 +123,7 @@ for overlay in map_label_overlays.find():
                 y.append(y_i_t)
 
                 if r < 2 and opts.flip:
-                    for a in range(2):
+                    for a in (1, 2):
                         X.append(np.flip(x_i_t, axis=a))
                         y.append(np.flip(y_i_t, axis=a))
 
