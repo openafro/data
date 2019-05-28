@@ -148,6 +148,9 @@ with h5py.File(opts.output, "w") as output:
     output.create_dataset("X_test", data=test[0])
     output.create_dataset("y_test", data=test[1])
 
+    output.attrs.create("train_mean", data=X.mean(axis=(0, 2, 3)))
+    output.attrs.create("train_std", data=X.std(axis=(0, 2, 3)))
+
     output.attrs.create("input_bands", X.shape[1])
     output.attrs.create("output_bands", y.shape[1])
     output.attrs.create("input_size", X.shape[2])
