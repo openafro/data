@@ -13,6 +13,8 @@ import random
 from os import path
 import numpy as np
 
+DTYPE='float32'
+
 def parse_color(c):
     'Parses a color encoded as a hex string into a tuple of bytes.'
     return tuple(map(lambda x: int(x, 16),
@@ -29,8 +31,10 @@ parser.add_argument('-t', '--output-size', help='Size of the tiles to be produce
                     type=int, default=128)
 parser.add_argument('-o', '--output', help='Path to the output h5py file.',
                     default='dataset.hdf5')
-parser.add_argument('--class-colors', help='RGB color of all classes present in the overlay (6-character hex string).',
+parser.add_argument('--class-colors', help='RGB color of all classes present in the overlay (6-character hex string). The first class is assumed to represent an empty pixel.',
                     nargs='+', default=['00000000', 'ff0000ff', 'ffff00ff'])
+parser.add_argument('--class-weights', help='Weights of each class before discretization.',
+                    type=float, nargs='+', default=[1, 1000, 1000])
 parser.add_argument('--tiles-dir', help='Path to directory containing reference tiles (input to the model).',
                     required=True)
 parser.add_argument('-e', '--tiles-extension', help='Extension of reference tile images.',
@@ -68,12 +72,19 @@ def classify_pixels(image, classes):
 
     assert image.shape[2] == len(classes[0]), 'Classes should be in the same color space as the image.'
 
-    m = np.zeros(((len(classes), image.shape[0], image.shape[1])))
+    m = np.zeros(((len(classes), image.shape[0], image.shape[1])), dtype=DTYPE)
 
     for c, color in enumerate(classes):
         m[c] = (image == color).all(axis=2)
 
     return m
+
+def classify(image):
+    for i in range(image.shape[0]):
+        image[i] *= opts.class_weights[i]
+
+    image = image.argmax(axis=0)
+    return image
 
 def split_dataset(X, y, splits):
     s = []
@@ -94,24 +105,27 @@ X, y = [], []
 
 for overlay in map_label_overlays.find():
     header, data = overlay["image"].split(",", 1)
+    tile = overlay["tile"]
 
     if header != "data:image/png;base64":
         print("Ignoring overlay with type", header, "(only PNG overlays supported for now)")
         continue
 
     overlay_image = io.imread(BytesIO(b64decode(data)))
-    tile_path = path.join(opts.tiles_dir, f'{overlay["tile"]}.{opts.tiles_extension}')
+    tile_path = path.join(opts.tiles_dir, f'{tile}.{opts.tiles_extension}')
     img_x = io.imread(tile_path, plugin='gdal')
-    n_tiles_v, n_tiles_h = img_x.shape[1] // i_side, img_x.shape[2] // i_side
+    n_tiles_h, n_tiles_v = img_x.shape[1] // i_side, img_x.shape[2] // i_side
 
     overlay_classes = classify_pixels(overlay_image, classes)
 
     assert overlay_classes.shape[1] % n_tiles_v == 0, 'Overlay size should be a multiple of the number of tile divisions.'
     assert overlay_classes.shape[2] % n_tiles_h == 0, 'Overlay size should be a multiple of the number of tile divisions.'
-    img_y = transform.downscale_local_mean(overlay_classes, (1, n_tiles_v, n_tiles_h))
+    overlay_scale_h = overlay_classes.shape[1] // (n_tiles_h * o_side)
+    overlay_scale_v = overlay_classes.shape[2] // (n_tiles_v * o_side)
+    img_y = transform.downscale_local_mean(overlay_classes, (1, overlay_scale_h, overlay_scale_v))
 
-    for ti in range(img_x.shape[1] // opts.input_size):
-        for tj in range(img_x.shape[2] // opts.input_size):
+    for ti in range(img_x.shape[2] // i_side):
+        for tj in range(img_x.shape[1] // o_side):
             x_i = img_x[:, ti*i_side : (ti + 1)*i_side, tj*i_side:(tj + 1)*i_side]
             y_i = img_y[:, ti*o_side : (ti + 1)*o_side, tj*o_side:(tj + 1)*o_side]
 
@@ -120,20 +134,20 @@ for overlay in map_label_overlays.find():
                 y_i_t = np.rot90(y_i, r, (1, 2))
 
                 X.append(x_i_t)
-                y.append(y_i_t)
+                y.append(classify(y_i_t))
 
                 if r < 2 and opts.flip:
                     for a in (1, 2):
                         X.append(np.flip(x_i_t, axis=a))
-                        y.append(np.flip(y_i_t, axis=a))
+                        y.append(classify(np.flip(y_i_t), axis=a))
 
                 if not opts.rotate:
                     break
 
-    print(f'Added example by {overlay["authorName"]} <{overlay["authorEmail"]}>')
+    print(f'Added {tile} by {overlay["authorName"]} <{overlay["authorEmail"]}>')
 
-X = np.array(X)
-y = np.array(y)
+X = np.array(X, dtype='float32')
+y = np.array(y, dtype='float32')
 
 print('X shape:', X.shape)
 print('y shape:', y.shape)
@@ -141,12 +155,12 @@ print('y shape:', y.shape)
 [train, val, test] = split_dataset(X, y, [opts.train, opts.validation, opts.test])
 
 with h5py.File(opts.output, "w") as output:
-    output.create_dataset("X_train", data=train[0])
-    output.create_dataset("y_train", data=train[1])
-    output.create_dataset("X_val", data=val[0])
-    output.create_dataset("y_val", data=val[1])
-    output.create_dataset("X_test", data=test[0])
-    output.create_dataset("y_test", data=test[1])
+    output.create_dataset("X_train", data=train[0], dtype=DTYPE)
+    output.create_dataset("y_train", data=train[1], dtype=DTYPE)
+    output.create_dataset("X_val", data=val[0], dtype=DTYPE)
+    output.create_dataset("y_val", data=val[1], dtype=DTYPE)
+    output.create_dataset("X_test", data=test[0], dtype=DTYPE)
+    output.create_dataset("y_test", data=test[1], dtype=DTYPE)
 
     output.attrs.create("train_mean", data=X.mean(axis=(0, 2, 3)))
     output.attrs.create("train_std", data=X.std(axis=(0, 2, 3)))
