@@ -2,6 +2,7 @@
 <html>
   <head>
     <title>Lista de tiles rotulados</title>
+    <meta charset="utf-8" />
     <style type="text/css">
       table {
           border-collapse: collapse;
@@ -12,10 +13,28 @@
           padding: 1em;
           text-align: center;
       }
+      .reviewed {
+          background-color: #ccffcc;
+      }
     </style>
   </head>
+  <script type="text/javascript">
+    function toggleReviewed(id) {
+      fetch(
+        '/toggle-reviewed/' + encodeURIComponent(id),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+        .then(res => {
+          window.location.hash = id;
+          window.location.reload();
+        })
+        .catch(error => alert(error));
+    }
+  </script>
   <body>
-    <h1>Tiles rotulados ({{count}})</h1>
+    <h1>Tiles rotulados ({{reviewedCount}}/{{count}} revisados)</h1>
     <table>
       <thead>
         <tr>
@@ -27,11 +46,16 @@
       </thead>
       <tbody>
         {{#overlays}}
-        <tr>
+        <tr id="{{_id}}" {{#reviewed}}class="reviewed"{{/reviewed}}>
           <td>{{ tile }}</td>
           <td>{{ timestamp }}</td>
           <td>{{ authorName }} &lt;{{authorEmail}}&gt;</td>
           <td><a href="/view/{{_id}}">Ver</a></td>
+          <td>
+            <a onclick="toggleReviewed('{{_id}}', {{reviewed}})" href="#">
+              Marcar como {{#reviewed}}não {{/reviewed}}revisado
+            </a>
+          </td>
         </tr>
         {{/overlays}}
       </tbody>

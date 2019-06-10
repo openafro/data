@@ -15,6 +15,7 @@ const MapLabelOverlay = Mongoose.model('MapLabelOverlay', {
   authorIpAddress: String,
   timestamp: Date,
   image: String,
+  reviewed: { type: Boolean, default: false },
 });
 
 const app = Express();
@@ -43,10 +44,18 @@ app.post('/save', (req, res) => {
     authorIpAddress: req.ip,
     timestamp: new Date(),
     image: req.body.image,
+    reviewed: false,
   });
 
   overlay.save();
   res.send('OK');
+});
+
+app.post('/toggle-reviewed/:id', async (req, res) => {
+  const overlay = await MapLabelOverlay.findById(req.params.id).exec();
+  overlay.reviewed = !overlay.reviewed;
+  overlay.save();
+  res.status(200).send(overlay.reviewed);
 });
 
 app.get('/view/:id', async (req, res) => {
@@ -62,8 +71,12 @@ app.get('/view/:id', async (req, res) => {
 app.get('/labeled-tiles-list', async (req, res) => {
   try {
     const overlays = await MapLabelOverlay.find({}, {
-      tile: true, authorName: true, authorEmail: true, timestamp: true });
-    res.render('label-overlay-list', { overlays });
+      tile: true, authorName: true, authorEmail: true, timestamp: true, reviewed: true });
+    res.render('label-overlay-list', {
+      overlays,
+      count: overlays.length,
+      reviewedCount: overlays.reduce((c, o) => c + !!o.reviewed, 0),
+    });
   } catch (e) {
     console.error(e);
     res.status(500).send();
