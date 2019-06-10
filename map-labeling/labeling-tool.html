@@ -18,12 +18,13 @@
           flex: 1;
       }
 
-      #tools {
+      #toolbox {
           padding: 2em;
           position: sticky;
           top: 0;
           left: 0;
           background-color: rgb(255, 255, 255, 0.5);
+          z-index: 10;
       }
 
       #tools div {
@@ -31,11 +32,15 @@
           margin-right: 2em;
       }
 
-      #canvas {
+      #canvas-space {
           background-size: contain;
           background-repeat: no-repeat;
-          width: 4096;
-          height: 4096;
+          width: 4096px;
+          height: 4096px;
+      }
+
+      h5 {
+          margin: 0.25em 0 0.25em 0;
       }
     </style>
 
@@ -43,16 +48,21 @@
       const ERASER_COLOR = "rgba(0, 0, 0, 1)", ROAD_COLOR = "#ff0000ff", CONSTRUCTION_COLOR = "#ffff00ff";
 
       let canvas;
+      let container;
       let context;
       let drawing = false;
       let radius = 10;
+      let canvasOpacity = 0.5;
+
       const tileId = "{{ tile }}";
 
       window.addEventListener("load", () => {
         canvas = document.getElementById("canvas");
+        container = document.getElementById("canvas-space");
         canvas.width = 4096;
         canvas.height = 4096;
-        canvas.style.backgroundImage = `url(/tiles/${tileId}.jpg)`;
+        canvas.style.opacity = canvasOpacity;
+        container.style.backgroundImage = `url(/tiles/${tileId}.jpg)`;
 
         canvas.addEventListener("mouseup", stopDrawing);
         canvas.addEventListener("mouseout", stopDrawing);
@@ -70,12 +80,15 @@
 
         const labelType = document.getElementById("label-type");
         const labelDiameter = document.getElementById("diameter");
+        const labelOpacity = document.getElementById("label-opacity");
 
         labelType.addEventListener("change", changeLabel);
         labelDiameter.addEventListener("change", changeDiameter);
+        labelOpacity.addEventListener("change", changeOpacity);
 
         labelType.value = "road";
         labelDiameter.value = "2";
+        labelOpacity.value = "50";
       });
 
       function startDrawing(event) {
@@ -119,6 +132,11 @@
         }
       }
 
+      function changeOpacity(event) {
+        canvasOpacity = event.target.value / 100;
+        canvas.style.opacity = canvasOpacity;
+      }
+
       function save() {
         const dataUrl = canvas.toDataURL('image/png');
         console.log('Saving tile =', tileId, ',', dataUrl.length, 'bytes.');
@@ -149,31 +167,48 @@
       <h1>Marcação de estradas e casas</h1>
 
       <div id="canvas-container">
-        <div id="tools">
-          <div>
-            <h5>Tipo de marcação</h5>
-            <select id="label-type">
-              <option value="road">Estrada</option>
-              <option value="building">Casas e construções</option>
-              <option value="eraser">Apagar</option>
-            </select>
+        <div id="toolbox">
+          <div id="tile-info">
+            <h5>Tile {{ tile }}</h5>
           </div>
-          <div>
-            <h5>Tamanho (diâmetro)</h5>
-            <select id="diameter">
-              <option value="1">1m</option>
-              <option value="2">2m</option>
-              <option value="3">3m</option>
-              <option value="4">4m</option>
-              <option value="5">5m</option>
-            </select>
-          </div>
-          <div>
-            <button onclick="save()">Salvar</button>
+
+          <div id="tools">
+            <div>
+              <h5>Tipo de marcação</h5>
+              <select id="label-type">
+                <option value="road">Estrada</option>
+                <option value="building">Casas e construções</option>
+                <option value="eraser">Apagar</option>
+              </select>
+            </div>
+            <div>
+              <h5>Tamanho (diâmetro)</h5>
+              <select id="diameter">
+                <option value="1">1m</option>
+                <option value="2">2m</option>
+                <option value="3">3m</option>
+                <option value="4">4m</option>
+                <option value="5">5m</option>
+              </select>
+            </div>
+            <div>
+              <h5>Opacidade (apenas visualização)</h5>
+              <select id="label-opacity">
+                <option value="100">100%</option>
+                <option value="50">50%</option>
+                <option value="10">10%</option>
+                <option value="0">0%</option>
+              </select>
+            </div>
+            <div>
+              <button onclick="save()">Salvar</button>
+            </div>
           </div>
         </div>
 
-        <canvas id="canvas"></canvas>
+        <div id="canvas-space">
+          <canvas id="canvas"></canvas>
+        </div>
       </div>
     </div>
 
