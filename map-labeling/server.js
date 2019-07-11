@@ -7,6 +7,7 @@ const _ = require('lodash');
 const BodyParser = require("body-parser");
 
 const tiles = require('./tiles.json');
+let labeledTiles = [];
 
 const MapLabelOverlay = Mongoose.model('MapLabelOverlay', {
   tile: String,
@@ -28,7 +29,9 @@ app.set('view engine', 'html');
 app.set('views', __dirname);
 
 app.get('/', (req, res) => {
-  res.render('labeling-tool', { tile: _.sample(tiles), data: "" });
+  const unlabeledTiles = _.difference(tiles, labeledTiles);
+  const tile = _.sample(unlabeledTiles.length ? unlabeledTiles : tiles);
+  res.render('labeling-tool', { tile, data: "" });
 });
 
 app.use('/tiles', Express.static(Path.join(__dirname, 'tiles')))
@@ -48,6 +51,7 @@ app.post('/save', (req, res) => {
   });
 
   overlay.save();
+  labeledTiles.push(req.body.tile);
   res.send('OK');
 });
 
@@ -84,7 +88,9 @@ app.get('/labeled-tiles-list', async (req, res) => {
 });
 
 Mongoose.connect('mongodb://localhost:27017/openafro', { useNewUrlParser: true }).then(() => {
-  app.listen(8000, (err) => {
+  app.listen(8000, async (err) => {
+    labeledTiles = _.uniq((await MapLabelOverlay.find({}, { tile: true })).map(r => r.tile));
+
     if (err) {
       return console.error(err);
     }
