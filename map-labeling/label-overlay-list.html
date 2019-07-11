@@ -13,15 +13,31 @@
           padding: 1em;
           text-align: center;
       }
-      .reviewed {
+      .approved {
           background-color: #ccffcc;
+      }
+      .rejected {
+          background-color: #ffcccc;
       }
     </style>
   </head>
   <script type="text/javascript">
-    function toggleReviewed(id) {
+    function removeReview(id) {
       fetch(
-        '/toggle-reviewed/' + encodeURIComponent(id),
+        '/remove-review/' + encodeURIComponent(id),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+        .then(res => {
+          window.location.hash = id;
+          window.location.reload();
+        })
+        .catch(error => alert(error));
+    }
+    function review(id, approved) {
+      fetch(
+        '/set-approved/' + encodeURIComponent(id) + '/' + (!!approved).toString(),
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -34,7 +50,7 @@
     }
   </script>
   <body>
-    <h1>Tiles rotulados ({{reviewedCount}}/{{count}} revisados)</h1>
+    <h1>Tiles rotulados ({{reviewedCount}}/{{count}} revisados, {{approvedCount}} aprovados)</h1>
     <table>
       <thead>
         <tr>
@@ -42,19 +58,36 @@
           <th>Data</th>
           <th>Autor</th>
           <th>Link</th>
+          <th>Revisão</th>
         </tr>
       </thead>
       <tbody>
         {{#overlays}}
-        <tr id="{{_id}}" {{#reviewed}}class="reviewed"{{/reviewed}}>
+        <tr id="{{_id}}"
+            {{#reviewed}}
+              {{#approved}}class="approved"{{/approved}}
+              {{^approved}}class="rejected"{{/approved}}
+            {{/reviewed}}
+        >
           <td>{{ tile }}</td>
           <td>{{ timestamp }}</td>
           <td>{{ authorName }} &lt;{{authorEmail}}&gt;</td>
           <td><a href="/view/{{_id}}">Ver</a></td>
           <td>
-            <a onclick="toggleReviewed('{{_id}}', {{reviewed}})" href="#">
-              Marcar como {{#reviewed}}não {{/reviewed}}revisado
-            </a>
+            {{^reviewed}}
+              <a onclick="review('{{_id}}', true)" href="#">
+                Aprovar
+              </a>
+              &nbsp;
+              <a onclick="review('{{_id}}', false)" href="#">
+                Rejeitar
+              </a>
+            {{/reviewed}}
+            {{#reviewed}}
+              <a onclick="removeReview('{{_id}}')" href="#">
+                Remover revisão
+              </a>
+            {{/reviewed}}
           </td>
         </tr>
         {{/overlays}}

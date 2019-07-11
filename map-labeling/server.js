@@ -17,6 +17,7 @@ const MapLabelOverlay = Mongoose.model('MapLabelOverlay', {
   timestamp: Date,
   image: String,
   reviewed: { type: Boolean, default: false },
+  approved: { type: Boolean, default: false },
 });
 
 const app = Express();
@@ -55,11 +56,19 @@ app.post('/save', (req, res) => {
   res.send('OK');
 });
 
-app.post('/toggle-reviewed/:id', async (req, res) => {
+app.post('/remove-review/:id', async (req, res) => {
   const overlay = await MapLabelOverlay.findById(req.params.id).exec();
-  overlay.reviewed = !overlay.reviewed;
+  overlay.reviewed = false;
   overlay.save();
-  res.status(200).send(overlay.reviewed);
+  res.status(200).send('OK');
+});
+
+app.post('/set-approved/:id/:approved', async (req, res) => {
+  const overlay = await MapLabelOverlay.findById(req.params.id).exec();
+  overlay.reviewed = true;
+  overlay.approved = req.params.approved == 'true';
+  overlay.save();
+  res.status(200).send('OK');
 });
 
 app.get('/view/:id', async (req, res) => {
@@ -75,11 +84,13 @@ app.get('/view/:id', async (req, res) => {
 app.get('/labeled-tiles-list', async (req, res) => {
   try {
     const overlays = await MapLabelOverlay.find({}, {
-      tile: true, authorName: true, authorEmail: true, timestamp: true, reviewed: true });
+      tile: true, authorName: true, authorEmail: true, timestamp: true, reviewed: true, approved: true
+    });
     res.render('label-overlay-list', {
       overlays,
       count: overlays.length,
       reviewedCount: overlays.reduce((c, o) => c + !!o.reviewed, 0),
+      approvedCount: overlays.reduce((c, o) => c + !!o.approved, 0),
     });
   } catch (e) {
     console.error(e);
