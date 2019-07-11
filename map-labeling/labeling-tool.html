@@ -142,11 +142,13 @@
         console.log('Saving tile =', tileId, ',', dataUrl.length, 'bytes.');
 
         const name = prompt('Obrigado pela contribuição! Para fins de registro, digite seu nome:',
-                           localStorage.name);
-        const email = prompt('Seu email:', localStorage.email);
+                            '{{originalAuthorName}}' || localStorage.name);
+        const email = prompt('Seu email:', '{{originalAuthorEmail}}' || localStorage.email);
 
+        {{^originalAuthorName}}
         localStorage.name = name;
         localStorage.email = email;
+        {{/originalAuthorName}}
 
         fetch(
           '/save',

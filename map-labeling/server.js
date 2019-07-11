@@ -74,7 +74,9 @@ app.post('/set-approved/:id/:approved', async (req, res) => {
 app.get('/view/:id', async (req, res) => {
   try {
     const overlay = await MapLabelOverlay.findById(req.params.id).exec();
-    res.render('labeling-tool', { tile: overlay.tile, data: overlay.image });
+    res.render('labeling-tool', { tile: overlay.tile, data: overlay.image,
+                                  originalAuthorName: overlay.authorName,
+                                  originalAuthorEmail: overlay.authorEmail });
   } catch (e) {
     console.error(e);
     res.status(400).send();
