@@ -9,6 +9,8 @@ const BodyParser = require("body-parser");
 const tiles = require('./tiles.json');
 let labeledTiles = [];
 
+const EMPTY_OVERLAY_SIZE_BYTES = 87202;
+
 const MapLabelOverlay = Mongoose.model('MapLabelOverlay', {
   tile: String,
   authorName: String,
@@ -85,14 +87,25 @@ app.get('/view/:id', async (req, res) => {
 
 app.get('/labeled-tiles-list', async (req, res) => {
   try {
-    const overlays = await MapLabelOverlay.find({}, {
-      tile: true, authorName: true, authorEmail: true, timestamp: true, reviewed: true, approved: true
-    });
+    const overlays = await MapLabelOverlay.aggregate([{
+      $project: {
+        tile: true,
+        authorName: true,
+        authorEmail: true,
+        timestamp: true,
+        reviewed: true,
+        approved: true,
+        isEmpty: { $eq: [ { $strLenBytes: '$image' }, EMPTY_OVERLAY_SIZE_BYTES ] },
+      },
+    }]);
+
     res.render('label-overlay-list', {
       overlays,
       count: overlays.length,
       reviewedCount: overlays.reduce((c, o) => c + !!o.reviewed, 0),
       approvedCount: overlays.reduce((c, o) => c + !!o.approved, 0),
+      nonEmptyCount: overlays.reduce((c, o) => c + !o.isEmpty, 0),
+      approvedNonEmptyCount: overlays.reduce((c, o) => c + !!(!o.isEmpty && o.approved), 0),
     });
   } catch (e) {
     console.error(e);

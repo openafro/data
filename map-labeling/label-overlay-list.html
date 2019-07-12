@@ -51,12 +51,14 @@
   </script>
   <body>
     <h1>Tiles rotulados ({{reviewedCount}}/{{count}} revisados, {{approvedCount}} aprovados)</h1>
+    <h3>{{nonEmptyCount}}/{{count}} não-vazios, {{approvedNonEmptyCount}}/{{approvedCount}} aprovados não-vazios</h3>
     <table>
       <thead>
         <tr>
           <th>Tile</th>
           <th>Data</th>
           <th>Autor</th>
+          <th>Vazio?</th>
           <th>Link</th>
           <th>Revisão</th>
         </tr>
@@ -72,6 +74,7 @@
           <td>{{ tile }}</td>
           <td>{{ timestamp }}</td>
           <td>{{ authorName }} &lt;{{authorEmail}}&gt;</td>
+          <td>{{#isEmpty}}Sim{{/isEmpty}}{{^isEmpty}}Não{{/isEmpty}} {{size}}</td>
           <td><a href="/view/{{_id}}">Ver</a></td>
           <td>
             {{^reviewed}}
